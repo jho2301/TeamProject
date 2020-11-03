@@ -1,106 +1,311 @@
 
-// ImageStitching.cpp : ÀÀ¿ë ÇÁ·Î±×·¥¿¡ ´ëÇÑ Å¬·¡½º µ¿ÀÛÀ» Á¤ÀÇÇÕ´Ï´Ù.
+// ImageStitchingDlg.cpp : êµ¬í˜„ íŒŒì¼
 //
 
 #include "stdafx.h"
 #include "ImageStitching.h"
 #include "ImageStitchingDlg.h"
+#include "afxdialogex.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
 #endif
 
+vector<Mat> input_imgs;
 
-// CImageStitchingApp
+// ì‘ìš© í”„ë¡œê·¸ë¨ ì •ë³´ì— ì‚¬ìš©ë˜ëŠ” CAboutDlg ëŒ€í™” ìƒìì…ë‹ˆë‹¤.
 
-BEGIN_MESSAGE_MAP(CImageStitchingApp, CWinApp)
-	ON_COMMAND(ID_HELP, &CWinApp::OnHelp)
+class CAboutDlg : public CDialogEx
+{
+public:
+	CAboutDlg();
+
+// ëŒ€í™” ìƒì ë°ì´í„°ì…ë‹ˆë‹¤.
+#ifdef AFX_DESIGN_TIME
+	enum { IDD = IDD_ABOUTBOX };
+#endif
+
+	protected:
+	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV ì§€ì›ì…ë‹ˆë‹¤.
+
+// êµ¬í˜„ì…ë‹ˆë‹¤.
+protected:
+	DECLARE_MESSAGE_MAP()
+};
+
+CAboutDlg::CAboutDlg() : CDialogEx(IDD_ABOUTBOX)
+{
+}
+
+void CAboutDlg::DoDataExchange(CDataExchange* pDX)
+{
+	CDialogEx::DoDataExchange(pDX);
+}
+
+BEGIN_MESSAGE_MAP(CAboutDlg, CDialogEx)
 END_MESSAGE_MAP()
 
 
-// CImageStitchingApp »ı¼º
+// CImageStitchingDlg ëŒ€í™” ìƒì
 
-CImageStitchingApp::CImageStitchingApp()
+
+
+CImageStitchingDlg::CImageStitchingDlg(CWnd* pParent /*=NULL*/)
+	: CDialogEx(IDD_IMAGESTITCHING_DIALOG, pParent)
+	, m_radio_resolution(0)
+	, m_radio_calibration(0)
+	, m_radio_interpolation(0)
 {
-	// ´Ù½Ã ½ÃÀÛ °ü¸®ÀÚ Áö¿ø
-	m_dwRestartManagerSupportFlags = AFX_RESTART_MANAGER_SUPPORT_RESTART;
+	m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
+}
 
-	// TODO: ¿©±â¿¡ »ı¼º ÄÚµå¸¦ Ãß°¡ÇÕ´Ï´Ù.
-	// InitInstance¿¡ ¸ğµç Áß¿äÇÑ ÃÊ±âÈ­ ÀÛ¾÷À» ¹èÄ¡ÇÕ´Ï´Ù.
+void CImageStitchingDlg::DoDataExchange(CDataExchange* pDX)
+{
+	CDialogEx::DoDataExchange(pDX);
+	DDX_Radio(pDX, IDC_RADIO_RESOLUTION_INPUTIMAGE1, m_radio_resolution);
+	DDX_Radio(pDX, IDC_RADIO_CALIBRATION_INPUTIMAGE1, m_radio_calibration);
+	DDX_Radio(pDX, IDC_RADIO_INTERPOLATION_BILINEAR, m_radio_interpolation);
+	DDX_Control(pDX, IDC_EDIT_INPUTIMAGE1, Edit_File_Inputimage1);
+	DDX_Control(pDX, IDC_EDIT_INPUTIMAGE2, Edit_File_Inputimage2);
+}
+
+BEGIN_MESSAGE_MAP(CImageStitchingDlg, CDialogEx)
+	ON_WM_SYSCOMMAND()
+	ON_WM_PAINT()
+	ON_WM_QUERYDRAGICON()
+	ON_BN_CLICKED(IDOK, &CImageStitchingDlg::OnBnClickedOk)
+	ON_BN_CLICKED(IDCANCEL, &CImageStitchingDlg::OnBnClickedCancel)
+	ON_CONTROL_RANGE(BN_CLICKED, IDC_RADIO_RESOLUTION_INPUTIMAGE1, IDC_RADIO_RESOLUTION_INPUTIMAGE2, OnClickedRadioResolution)
+	ON_CONTROL_RANGE(BN_CLICKED, IDC_RADIO_CALIBRATION_INPUTIMAGE1, IDC_RADIO_CALIBRATION_OFF, OnClickedRadioCalibration)
+	ON_CONTROL_RANGE(BN_CLICKED, IDC_RADIO_INTERPOLATION_BILINEAR, IDC_RADIO_INTERPOLATION_B_SPLINE, OnClickedRadioInterpolation)
+	ON_BN_CLICKED(IDC_OPENBUTTON1, &CImageStitchingDlg::OnBnClickedOpenbutton1)
+	ON_BN_CLICKED(IDC_OPENBUTTON2, &CImageStitchingDlg::OnBnClickedOpenbutton2)
+END_MESSAGE_MAP()
+
+
+// CImageStitchingDlg ë©”ì‹œì§€ ì²˜ë¦¬ê¸°
+
+BOOL CImageStitchingDlg::OnInitDialog()
+{
+	CDialogEx::OnInitDialog();
+
+	// ì‹œìŠ¤í…œ ë©”ë‰´ì— "ì •ë³´..." ë©”ë‰´ í•­ëª©ì„ ì¶”ê°€í•©ë‹ˆë‹¤.
+
+	// IDM_ABOUTBOXëŠ” ì‹œìŠ¤í…œ ëª…ë ¹ ë²”ìœ„ì— ìˆì–´ì•¼ í•©ë‹ˆë‹¤.
+	ASSERT((IDM_ABOUTBOX & 0xFFF0) == IDM_ABOUTBOX);
+	ASSERT(IDM_ABOUTBOX < 0xF000);
+
+	CMenu* pSysMenu = GetSystemMenu(FALSE);
+	if (pSysMenu != NULL)
+	{
+		BOOL bNameValid;
+		CString strAboutMenu;
+		bNameValid = strAboutMenu.LoadString(IDS_ABOUTBOX);
+		ASSERT(bNameValid);
+		if (!strAboutMenu.IsEmpty())
+		{
+			pSysMenu->AppendMenu(MF_SEPARATOR);
+			pSysMenu->AppendMenu(MF_STRING, IDM_ABOUTBOX, strAboutMenu);
+		}
+	}
+
+	// ì´ ëŒ€í™” ìƒìì˜ ì•„ì´ì½˜ì„ ì„¤ì •í•©ë‹ˆë‹¤.  ì‘ìš© í”„ë¡œê·¸ë¨ì˜ ì£¼ ì°½ì´ ëŒ€í™” ìƒìê°€ ì•„ë‹ ê²½ìš°ì—ëŠ”
+	//  í”„ë ˆì„ì›Œí¬ê°€ ì´ ì‘ì—…ì„ ìë™ìœ¼ë¡œ ìˆ˜í–‰í•©ë‹ˆë‹¤.
+	SetIcon(m_hIcon, TRUE);			// í° ì•„ì´ì½˜ì„ ì„¤ì •í•©ë‹ˆë‹¤.
+	SetIcon(m_hIcon, FALSE);		// ì‘ì€ ì•„ì´ì½˜ì„ ì„¤ì •í•©ë‹ˆë‹¤.
+
+	// TODO: ì—¬ê¸°ì— ì¶”ê°€ ì´ˆê¸°í™” ì‘ì—…ì„ ì¶”ê°€í•©ë‹ˆë‹¤.
+
+	return TRUE;  // í¬ì»¤ìŠ¤ë¥¼ ì»¨íŠ¸ë¡¤ì— ì„¤ì •í•˜ì§€ ì•Šìœ¼ë©´ TRUEë¥¼ ë°˜í™˜í•©ë‹ˆë‹¤.
+}
+
+void CImageStitchingDlg::OnSysCommand(UINT nID, LPARAM lParam)
+{
+	if ((nID & 0xFFF0) == IDM_ABOUTBOX)
+	{
+		CAboutDlg dlgAbout;
+		dlgAbout.DoModal();
+	}
+	else
+	{
+		CDialogEx::OnSysCommand(nID, lParam);
+	}
+}
+
+// ëŒ€í™” ìƒìì— ìµœì†Œí™” ë‹¨ì¶”ë¥¼ ì¶”ê°€í•  ê²½ìš° ì•„ì´ì½˜ì„ ê·¸ë¦¬ë ¤ë©´
+//  ì•„ë˜ ì½”ë“œê°€ í•„ìš”í•©ë‹ˆë‹¤.  ë¬¸ì„œ/ë·° ëª¨ë¸ì„ ì‚¬ìš©í•˜ëŠ” MFC ì‘ìš© í”„ë¡œê·¸ë¨ì˜ ê²½ìš°ì—ëŠ”
+//  í”„ë ˆì„ì›Œí¬ì—ì„œ ì´ ì‘ì—…ì„ ìë™ìœ¼ë¡œ ìˆ˜í–‰í•©ë‹ˆë‹¤.
+
+void CImageStitchingDlg::OnPaint()
+{
+	if (IsIconic())
+	{
+		CPaintDC dc(this); // ê·¸ë¦¬ê¸°ë¥¼ ìœ„í•œ ë””ë°”ì´ìŠ¤ ì»¨í…ìŠ¤íŠ¸ì…ë‹ˆë‹¤.
+
+		SendMessage(WM_ICONERASEBKGND, reinterpret_cast<WPARAM>(dc.GetSafeHdc()), 0);
+
+		// í´ë¼ì´ì–¸íŠ¸ ì‚¬ê°í˜•ì—ì„œ ì•„ì´ì½˜ì„ ê°€ìš´ë°ì— ë§ì¶¥ë‹ˆë‹¤.
+		int cxIcon = GetSystemMetrics(SM_CXICON);
+		int cyIcon = GetSystemMetrics(SM_CYICON);
+		CRect rect;
+		GetClientRect(&rect);
+		int x = (rect.Width() - cxIcon + 1) / 2;
+		int y = (rect.Height() - cyIcon + 1) / 2;
+
+		// ì•„ì´ì½˜ì„ ê·¸ë¦½ë‹ˆë‹¤.
+		dc.DrawIcon(x, y, m_hIcon);
+	}
+	else
+	{
+		CDialogEx::OnPaint();
+	}
+}
+
+// ì‚¬ìš©ìê°€ ìµœì†Œí™”ëœ ì°½ì„ ë„ëŠ” ë™ì•ˆì— ì»¤ì„œê°€ í‘œì‹œë˜ë„ë¡ ì‹œìŠ¤í…œì—ì„œ
+//  ì´ í•¨ìˆ˜ë¥¼ í˜¸ì¶œí•©ë‹ˆë‹¤.
+HCURSOR CImageStitchingDlg::OnQueryDragIcon()
+{
+	return static_cast<HCURSOR>(m_hIcon);
 }
 
 
-// À¯ÀÏÇÑ CImageStitchingApp °³Ã¼ÀÔ´Ï´Ù.
 
-CImageStitchingApp theApp;
-
-
-// CImageStitchingApp ÃÊ±âÈ­
-
-BOOL CImageStitchingApp::InitInstance()
+void CImageStitchingDlg::OnBnClickedOk()
 {
-	// ÀÀ¿ë ÇÁ·Î±×·¥ ¸Å´ÏÆä½ºÆ®°¡ ComCtl32.dll ¹öÀü 6 ÀÌ»óÀ» »ç¿ëÇÏ¿© ºñÁÖ¾ó ½ºÅ¸ÀÏÀ»
-	// »ç¿ëÇÏµµ·Ï ÁöÁ¤ÇÏ´Â °æ¿ì, Windows XP »ó¿¡¼­ ¹İµå½Ã InitCommonControlsEx()°¡ ÇÊ¿äÇÕ´Ï´Ù.
-	// InitCommonControlsEx()¸¦ »ç¿ëÇÏÁö ¾ÊÀ¸¸é Ã¢À» ¸¸µé ¼ö ¾ø½À´Ï´Ù.
-	INITCOMMONCONTROLSEX InitCtrls;
-	InitCtrls.dwSize = sizeof(InitCtrls);
-	// ÀÀ¿ë ÇÁ·Î±×·¥¿¡¼­ »ç¿ëÇÒ ¸ğµç °ø¿ë ÄÁÆ®·Ñ Å¬·¡½º¸¦ Æ÷ÇÔÇÏµµ·Ï
-	// ÀÌ Ç×¸ñÀ» ¼³Á¤ÇÏ½Ê½Ã¿À.
-	InitCtrls.dwICC = ICC_WIN95_CLASSES;
-	InitCommonControlsEx(&InitCtrls);
+	Mat result;
+	// TODO: ì—¬ê¸°ì— ì»¨íŠ¸ë¡¤ ì•Œë¦¼ ì²˜ë¦¬ê¸° ì½”ë“œë¥¼ ì¶”ê°€í•©ë‹ˆë‹¤.
+	Stitcher stitcher = Stitcher::createDefault();
 
-	CWinApp::InitInstance();
-
-
-	AfxEnableControlContainer();
-
-	// ´ëÈ­ »óÀÚ¿¡ ¼Ğ Æ®¸® ºä ¶Ç´Â
-	// ¼Ğ ¸ñ·Ï ºä ÄÁÆ®·ÑÀÌ Æ÷ÇÔµÇ¾î ÀÖ´Â °æ¿ì ¼Ğ °ü¸®ÀÚ¸¦ ¸¸µì´Ï´Ù.
-	CShellManager *pShellManager = new CShellManager;
-
-	// MFC ÄÁÆ®·ÑÀÇ Å×¸¶¸¦ »ç¿ëÇÏ±â À§ÇØ "Windows ¿øÇü" ºñÁÖ¾ó °ü¸®ÀÚ È°¼ºÈ­
-	CMFCVisualManager::SetDefaultManager(RUNTIME_CLASS(CMFCVisualManagerWindows));
-
-	// Ç¥ÁØ ÃÊ±âÈ­
-	// ÀÌµé ±â´ÉÀ» »ç¿ëÇÏÁö ¾Ê°í ÃÖÁ¾ ½ÇÇà ÆÄÀÏÀÇ Å©±â¸¦ ÁÙÀÌ·Á¸é
-	// ¾Æ·¡¿¡¼­ ÇÊ¿ä ¾ø´Â Æ¯Á¤ ÃÊ±âÈ­
-	// ·çÆ¾À» Á¦°ÅÇØ¾ß ÇÕ´Ï´Ù.
-	// ÇØ´ç ¼³Á¤ÀÌ ÀúÀåµÈ ·¹Áö½ºÆ®¸® Å°¸¦ º¯°æÇÏ½Ê½Ã¿À.
-	// TODO: ÀÌ ¹®ÀÚ¿­À» È¸»ç ¶Ç´Â Á¶Á÷ÀÇ ÀÌ¸§°ú °°Àº
-	// ÀûÀıÇÑ ³»¿ëÀ¸·Î ¼öÁ¤ÇØ¾ß ÇÕ´Ï´Ù.
-	SetRegistryKey(_T("·ÎÄÃ ÀÀ¿ë ÇÁ·Î±×·¥ ¸¶¹ı»ç¿¡¼­ »ı¼ºµÈ ÀÀ¿ë ÇÁ·Î±×·¥"));
-
-	CImageStitchingDlg dlg;
-	m_pMainWnd = &dlg;
-	INT_PTR nResponse = dlg.DoModal();
-	if (nResponse == IDOK)
-	{
-		// TODO: ¿©±â¿¡ [È®ÀÎ]À» Å¬¸¯ÇÏ¿© ´ëÈ­ »óÀÚ°¡ ¾ø¾îÁú ¶§ Ã³¸®ÇÒ
-		//  ÄÚµå¸¦ ¹èÄ¡ÇÕ´Ï´Ù.
+	imshow("img1", input_imgs[0]);
+	imshow("img2", input_imgs[1]);
+	
+	Stitcher::Status status = stitcher.stitch(input_imgs, result);
+	
+	if (status != Stitcher::OK)
+    {
+	        printf("Can't stitch images, error code =  %d", status);
 	}
-	else if (nResponse == IDCANCEL)
-	{
-		// TODO: ¿©±â¿¡ [Ãë¼Ò]¸¦ Å¬¸¯ÇÏ¿© ´ëÈ­ »óÀÚ°¡ ¾ø¾îÁú ¶§ Ã³¸®ÇÒ
-		//  ÄÚµå¸¦ ¹èÄ¡ÇÕ´Ï´Ù.
-	}
-	else if (nResponse == -1)
-	{
-		TRACE(traceAppMsg, 0, "°æ°í: ´ëÈ­ »óÀÚ¸¦ ¸¸µéÁö ¸øÇßÀ¸¹Ç·Î ÀÀ¿ë ÇÁ·Î±×·¥ÀÌ ¿¹±âÄ¡ ¾Ê°Ô Á¾·áµË´Ï´Ù.\n");
-		TRACE(traceAppMsg, 0, "°æ°í: ´ëÈ­ »óÀÚ¿¡¼­ MFC ÄÁÆ®·ÑÀ» »ç¿ëÇÏ´Â °æ¿ì #define _AFX_NO_MFC_CONTROLS_IN_DIALOGS¸¦ ¼öÇàÇÒ ¼ö ¾ø½À´Ï´Ù.\n");
+	else {
+
+	imshow("result", result);
 	}
 
-	// À§¿¡¼­ ¸¸µç ¼Ğ °ü¸®ÀÚ¸¦ »èÁ¦ÇÕ´Ï´Ù.
-	if (pShellManager != NULL)
-	{
-		delete pShellManager;
-	}
-
-#ifndef _AFXDLL
-	ControlBarCleanUp();
-#endif
-
-	// ´ëÈ­ »óÀÚ°¡ ´İÇûÀ¸¹Ç·Î ÀÀ¿ë ÇÁ·Î±×·¥ÀÇ ¸Ş½ÃÁö ÆßÇÁ¸¦ ½ÃÀÛÇÏÁö ¾Ê°í  ÀÀ¿ë ÇÁ·Î±×·¥À» ³¡³¾ ¼ö ÀÖµµ·Ï FALSE¸¦
-	// ¹İÈ¯ÇÕ´Ï´Ù.
-	return FALSE;
+	waitKey();
+	CDialogEx::OnOK();
 }
 
+
+void CImageStitchingDlg::OnBnClickedCancel()
+{
+	// TODO: ì—¬ê¸°ì— ì»¨íŠ¸ë¡¤ ì•Œë¦¼ ì²˜ë¦¬ê¸° ì½”ë“œë¥¼ ì¶”ê°€í•©ë‹ˆë‹¤.
+	CDialogEx::OnCancel();
+}
+
+
+void CImageStitchingDlg::OnClickedRadioResolution(UINT msg)
+{
+	UpdateData(TRUE);
+	switch (m_radio_resolution)
+	{
+	case 0:	// Input Image 1
+		break;
+	case 1: // Input Image 2
+		break;
+	}
+}
+
+void CImageStitchingDlg::OnClickedRadioCalibration(UINT msg)
+{
+	UpdateData(TRUE);
+	switch (m_radio_calibration)
+	{
+	case 0: // Input Image 1
+		break;
+	case 1: // Input Image 2
+		break;
+	case 2: // Average
+		break;
+	case 3: // OFF
+		break;
+	}
+}
+
+void CImageStitchingDlg::OnClickedRadioInterpolation(UINT msg)
+{
+	UpdateData(TRUE);
+	switch (m_radio_interpolation)
+	{
+	case 0: // Bilinear Interpolation
+		break;
+	case 1: // Bicubic Interpolation
+		break;
+	case 2: // B-Spline Interpolation
+		break;
+
+	}
+}
+
+
+
+
+void CImageStitchingDlg::OnBnClickedOpenbutton1()
+{
+	// TODO: ì—¬ê¸°ì— ì»¨íŠ¸ë¡¤ ì•Œë¦¼ ì²˜ë¦¬ê¸° ì½”ë“œë¥¼ ì¶”ê°€í•©ë‹ˆë‹¤.
+	char szFilter[] = " All Files(*.*)|*.*|";
+
+	CFileDialog dlg(TRUE, NULL, NULL, OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT, (CString)szFilter, NULL);
+
+	if (IDOK == dlg.DoModal())
+
+	{
+
+		// ì´ë¯¸ì§€ ê²½ë¡œ íšë“
+
+		CString img_path = dlg.GetPathName();
+
+		// Image Path ë„£ê¸°
+
+		Edit_File_Inputimage1.SetWindowTextA(dlg.GetFileTitle());
+
+		// IplImageë¡œ ì½ì–´ì˜¤ê¸°
+		IplImage* img = cvLoadImage((LPSTR)(LPCSTR)img_path);
+		Mat matImg = cvarrToMat(img, false);
+		input_imgs.push_back(matImg);
+
+		// í™”ë©´ ì¶œë ¥
+
+	//	cvShowImage("Input Image 1", img);
+
+	}
+}
+
+
+void CImageStitchingDlg::OnBnClickedOpenbutton2()
+{
+	// TODO: ì—¬ê¸°ì— ì»¨íŠ¸ë¡¤ ì•Œë¦¼ ì²˜ë¦¬ê¸° ì½”ë“œë¥¼ ì¶”ê°€í•©ë‹ˆë‹¤.
+	char szFilter[] = " All Files(*.*)|*.*|";
+
+	CFileDialog dlg(TRUE, NULL, NULL, OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT, (CString)szFilter, NULL);
+
+	if (IDOK == dlg.DoModal())
+
+	{
+
+		// ì´ë¯¸ì§€ ê²½ë¡œ íšë“
+
+		CString img_path = dlg.GetPathName();
+
+		// Image Path ë„£ê¸°
+
+		Edit_File_Inputimage2.SetWindowTextA(dlg.GetFileTitle());
+
+		// IplImageë¡œ ì½ì–´ì˜¤ê¸°
+		IplImage* img = cvLoadImage((LPSTR)(LPCSTR)img_path);
+		Mat matImg = Mat(cvarrToMat(img));
+		input_imgs.push_back(matImg);
+
+		// í™”ë©´ ì¶œë ¥
+
+	//	cvShowImage("Input Image 2", img);
+	}
+}
